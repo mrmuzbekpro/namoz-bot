@@ -1,28 +1,20 @@
 import requests
-from telegram import (
-    Update,
-    KeyboardButton,
-    ReplyKeyboardMarkup
-)
-from telegram.ext import (
-    ApplicationBuilder,
-    CommandHandler,
-    MessageHandler,
-    ContextTypes,
-    filters
-)
+import os
+from telegram import Update, KeyboardButton, ReplyKeyboardMarkup
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 from datetime import datetime
 import pytz
 
-import os
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+BOT_TOKEN = os.getenv("BOT_TOKEN")  # Render.com dagi token
 
+# Lokatsiyani qayta ishlovchi funksiya
 async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         location = update.message.location
         lat = location.latitude
         lon = location.longitude
 
+        # Geolokatsiya: manzil olish
         geo_url = f"https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lon}&format=json"
         geo_resp = requests.get(geo_url, headers={'User-Agent': 'Mozilla/5.0'})
         geo_data = geo_resp.json()
@@ -32,11 +24,13 @@ async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
         city = address.get("city") or address.get("town") or address.get("village") or address.get("state") or "Nomaʼlum shahar"
         country = address.get("country", "Nomaʼlum davlat")
 
+        # Mahalliy vaqt olish
         tz_url = f"http://api.aladhan.com/v1/timeZone/{lat}/{lon}"
         tz_resp = requests.get(tz_url).json()
         timezone = tz_resp["data"]["timezone"]
         local_time = datetime.now(pytz.timezone(timezone)).strftime("%H:%M %d-%m-%Y")
 
+        # Namoz vaqtlarini olish
         prayer_url = f"https://api.aladhan.com/v1/timings?latitude={lat}&longitude={lon}&method=2"
         prayer_resp = requests.get(prayer_url).json()
         timings = prayer_resp["data"]["timings"]
@@ -57,12 +51,13 @@ async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(message)
 
     except Exception as e:
+        print("Xatolik:", e)  # Loglarda ko‘rasiz
         await update.message.reply_text("Xatolik yuz berdi. Qaytadan urinib ko‘ring.")
-        print(f"Xatolik: {e}")
 
+# /start komandasi
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    location_button = KeyboardButton("Joylashuvni yuborish", request_location=True)
-    keyboard = ReplyKeyboardMarkup([[location_button]], resize_keyboard=True, one_time_keyboard=True)
+    button = KeyboardButton("Joylashuvni yuborish", request_location=True)
+    keyboard = ReplyKeyboardMarkup([[button]], resize_keyboard=True, one_time_keyboard=True)
     await update.message.reply_text(
         "Assalomu alaykum! Iltimos, joylashuvingizni yuboring:",
         reply_markup=keyboard
